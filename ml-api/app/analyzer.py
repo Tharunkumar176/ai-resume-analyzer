@@ -1,0 +1,175 @@
+import re
+from typing import List, Tuple
+from app.utils import (
+    extract_keywords,
+    match_skills,
+    calculate_keyword_match,
+    calculate_experience_score,
+    calculate_education_score
+)
+from app.models import ResumeAnalysisResponse, ScoreBreakdown
+
+def calculate_ats_score(resume_text: str) -> float:
+    """
+    Calculate ATS (Applicant Tracking System) compatibility score
+    Based on formatting, structure, and readability
+    """
+    score = 0
+    max_score = 100
+    
+    # Check for contact information
+    email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+    phone_pattern = r'(\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}'
+    
+    if re.search(email_pattern, resume_text):
+        score += 15
+    if re.search(phone_pattern, resume_text):
+        score += 10
+    
+    # Check for common resume sections
+    sections = ['experience', 'education', 'skills', 'projects', 'summary', 'objective']
+    found_sections = sum(1 for section in sections if section in resume_text.lower())
+    score += min(found_sections * 10, 40)
+    
+    # Check for bullet points or structured content
+    if '•' in resume_text or '-' in resume_text or '*' in resume_text:
+        score += 15
+    
+    # Check text length (not too short, not too long)
+    word_count = len(resume_text.split())
+    if 200 <= word_count <= 2000:
+        score += 20
+    elif 100 <= word_count < 200 or 2000 < word_count <= 3000:
+        score += 10
+    
+    return min(score, max_score)
+
+def generate_suggestions(
+    resume_text: str,
+    ats_score: float,
+    keyword_score: float,
+    skill_match_percentage: float,
+    missing_skills: List[str],
+    experience_score: float
+) -> List[str]:
+    """
+    Generate personalized suggestions for resume improvement
+    """
+    suggestions = []
+    
+    # ATS Score suggestions
+    if ats_score < 60:
+        suggestions.append("Improve ATS compatibility by adding clear section headers like 'Experience', 'Education', and 'Skills'")
+        suggestions.append("Include your contact information (email and phone number) at the top of your resume")
+        suggestions.append("Use bullet points to organize your experience and achievements")
+    elif ats_score < 80:
+        suggestions.append("Consider adding more structured sections to improve ATS readability")
+    
+    # Keyword suggestions
+    if keyword_score < 60:
+        suggestions.append("Increase keyword match by incorporating more relevant terms from the job description")
+        suggestions.append("Use industry-specific terminology and action verbs in your descriptions")
+    elif keyword_score < 80:
+        suggestions.append("Fine-tune your resume by adding more keywords from the target role")
+    
+    # Skills suggestions
+    if skill_match_percentage < 50:
+        if missing_skills:
+            top_missing = missing_skills[:5]
+            suggestions.append(f"Consider acquiring these in-demand skills: {', '.join(top_missing)}")
+        suggestions.append("Highlight your technical skills more prominently in a dedicated Skills section")
+    elif skill_match_percentage < 75:
+        if missing_skills:
+            suggestions.append(f"Strengthen your profile by learning: {', '.join(missing_skills[:3])}")
+    
+    # Experience suggestions
+    if experience_score < 70:
+        suggestions.append("Add more details about your work experience, including specific achievements and metrics")
+        suggestions.append("Quantify your accomplishments with numbers, percentages, or specific outcomes")
+    
+    # General suggestions
+    if not re.search(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', resume_text):
+        suggestions.append("Add a professional email address to your contact information")
+    
+    # Check for action verbs
+    action_verbs = ['developed', 'managed', 'led', 'created', 'implemented', 'designed', 'improved', 'achieved']
+    if not any(verb in resume_text.lower() for verb in action_verbs):
+        suggestions.append("Use strong action verbs like 'developed', 'managed', 'led', and 'implemented' to describe your experience")
+    
+    # Education check
+    education_keywords = ['bachelor', 'master', 'degree', 'university', 'college']
+    if not any(keyword in resume_text.lower() for keyword in education_keywords):
+        suggestions.append("Include your educational background with degree, institution, and graduation year")
+    
+    # Projects suggestion
+    if 'project' not in resume_text.lower():
+        suggestions.append("Add a Projects section to showcase your practical experience and technical skills")
+    
+    # Keep only unique suggestions and limit to top 8
+    suggestions = list(dict.fromkeys(suggestions))[:8]
+    
+    if not suggestions:
+        suggestions.append("Your resume looks great! Keep it updated with your latest achievements.")
+    
+    return suggestions
+
+def analyze_resume(resume_text: str, job_description: str = "") -> ResumeAnalysisResponse:
+    """
+    Main function to analyze resume and return comprehensive results
+    """
+    # Calculate individual scores
+    ats_score = calculate_ats_score(resume_text)
+    keyword_score = calculate_keyword_match(resume_text, job_description)
+    experience_score = calculate_experience_score(resume_text)
+    education_score = calculate_education_score(resume_text)
+    
+    # Extract skills and calculate match
+    matched_skills, missing_skills, skill_match_percentage = match_skills(resume_text, job_description)
+    skills_score = skill_match_percentage
+    
+    # Extract keywords
+    extracted_keywords = extract_keywords(resume_text, 15)
+    
+    # Calculate overall score (weighted average)
+    overall_score = (
+        ats_score * 0.25 +
+        keyword_score * 0.20 +
+        skills_score * 0.25 +
+        experience_score * 0.15 +
+        education_score * 0.15
+    )
+    
+    # Generate suggestions
+    suggestions = generate_suggestions(
+        resume_text,
+        ats_score,
+        keyword_score,
+        skill_match_percentage,
+        missing_skills,
+        experience_score
+    )
+    
+    # Create score breakdown
+    score_breakdown = ScoreBreakdown(
+        ats_score=round(ats_score, 2),
+        keyword_score=round(keyword_score, 2),
+        experience_score=round(experience_score, 2),
+        education_score=round(education_score, 2),
+        skills_score=round(skills_score, 2)
+    )
+    
+    # Create response
+    response = ResumeAnalysisResponse(
+        overall_score=round(overall_score, 2),
+        ats_score=round(ats_score, 2),
+        keyword_score=round(keyword_score, 2),
+        skill_match_percentage=round(skill_match_percentage, 2),
+        matched_skills=matched_skills[:20],  # Limit to top 20
+        missing_skills=missing_skills[:15],   # Limit to top 15
+        experience_score=round(experience_score, 2),
+        suggestions=suggestions,
+        extracted_keywords=extracted_keywords,
+        score_breakdown=score_breakdown
+    )
+    
+    return response
