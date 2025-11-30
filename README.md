@@ -370,3 +370,4 @@ For issues and questions, please open an issue in the repository.
 ---
 
 Built with ❤️ using React, Node.js, FastAPI, and MongoDB
+# ai-resume-analyzer
