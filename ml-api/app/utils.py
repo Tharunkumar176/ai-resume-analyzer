@@ -173,7 +173,41 @@ def detect_education(text: str) -> bool:
 
 def calculate_education_score(resume_text: str) -> float:
     """
-    Calculate education score
+    Calculate education score based on completeness of education information
     """
-    has_education = detect_education(resume_text)
-    return 85.0 if has_education else 50.0
+    score = 0
+    text_lower = resume_text.lower()
+    
+    # Check for education section header (20 points)
+    if re.search(r'\beducation\b', text_lower):
+        score += 20
+    
+    # Check for degree types (30 points)
+    degree_keywords = [
+        'bachelor', 'master', 'phd', 'doctorate', 'b.tech', 'm.tech', 
+        'b.e', 'm.e', 'bsc', 'msc', 'mba', 'b.s', 'm.s', 'ba', 'ma',
+        'associate', 'diploma'
+    ]
+    if any(keyword in text_lower for keyword in degree_keywords):
+        score += 30
+    
+    # Check for institution (20 points)
+    institution_keywords = ['university', 'college', 'institute', 'school']
+    if any(keyword in text_lower for keyword in institution_keywords):
+        score += 20
+    
+    # Check for graduation year or date (15 points)
+    # Look for years between 1980-2030
+    if re.search(r'\b(19[8-9]\d|20[0-3]\d)\b', resume_text):
+        score += 15
+    
+    # Check for major/field of study (15 points)
+    major_keywords = [
+        'computer science', 'engineering', 'business', 'science', 'arts',
+        'technology', 'mathematics', 'physics', 'chemistry', 'biology',
+        'economics', 'management', 'finance', 'marketing', 'cs', 'it'
+    ]
+    if any(keyword in text_lower for keyword in major_keywords):
+        score += 15
+    
+    return min(score, 100)

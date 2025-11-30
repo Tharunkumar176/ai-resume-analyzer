@@ -124,7 +124,8 @@ def generate_suggestions(
     keyword_score: float,
     skill_match_percentage: float,
     missing_skills: List[str],
-    experience_score: float
+    experience_score: float,
+    education_score: float = 0
 ) -> List[str]:
     """
     Generate personalized suggestions for resume improvement
@@ -167,6 +168,14 @@ def generate_suggestions(
         suggestions.append("Add more details about your work experience, including specific achievements and metrics")
         suggestions.append("Quantify your accomplishments with numbers, percentages, or specific outcomes")
     
+    # Education suggestions
+    if education_score < 30:
+        suggestions.append("Add an EDUCATION section with your degree, institution name, and graduation year")
+    elif education_score < 60:
+        suggestions.append("Complete your education section with degree type, university name, graduation year, and major")
+    elif education_score < 85:
+        suggestions.append("Include your field of study/major in your education section for better clarity")
+    
     # General suggestions
     if not re.search(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', resume_text):
         suggestions.append("Add a professional email address to your contact information")
@@ -175,11 +184,6 @@ def generate_suggestions(
     action_verbs = ['developed', 'managed', 'led', 'created', 'implemented', 'designed', 'improved', 'achieved']
     if not any(verb in resume_text.lower() for verb in action_verbs):
         suggestions.append("Use strong action verbs like 'developed', 'managed', 'led', and 'implemented' to describe your experience")
-    
-    # Education check
-    education_keywords = ['bachelor', 'master', 'degree', 'university', 'college']
-    if not any(keyword in resume_text.lower() for keyword in education_keywords):
-        suggestions.append("Include your educational background with degree, institution, and graduation year")
     
     # Projects suggestion
     if 'project' not in resume_text.lower():
@@ -226,7 +230,8 @@ def analyze_resume(resume_text: str, job_description: str = "") -> ResumeAnalysi
         keyword_score,
         skill_match_percentage,
         missing_skills,
-        experience_score
+        experience_score,
+        education_score
     )
     
     # Create score breakdown
