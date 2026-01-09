@@ -1,4 +1,4 @@
-# AI Resume Analyzer
+# AI Resume Analyzer 🚀
 
 A comprehensive full-stack application for analyzing resumes using AI and machine learning. The system provides detailed scoring, skill matching, ATS compatibility analysis, and personalized improvement suggestions.
 
